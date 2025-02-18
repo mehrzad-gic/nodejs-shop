@@ -1,0 +1,146 @@
+openapi: 3.0.0
+info:
+  title: User Management API
+  version: 1.0.0
+  description: API for user registration, login, and OTP verification.
+servers:
+  - url: http://localhost:3000/api
+tags:
+  - name: Authentication
+    description: API endpoints for user authentication
+
+paths:
+  /register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                repeat_password:
+                  type: string
+              required:
+                - name
+                - email
+                - password
+                - repeat_password
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                  message:
+                    type: string
+        '400':
+          description: Bad request
+        '500':
+          description: Internal server error
+
+  /login:
+    post:
+      tags:
+        - Authentication
+      summary: Login user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+              required:
+                - email
+                - password
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  token:
+                    type: string
+        '404':
+          description: User not found
+        '403':
+          description: Invalid password
+        '500':
+          description: Internal server error
+
+  /send-otp:
+    post:
+      tags:
+        - Authentication
+      summary: Send OTP to user email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+              required:
+                - email
+      responses:
+        '200':
+          description: OTP sent successfully
+        '404':
+          description: User not found
+        '400':
+          description: User already active or OTP already sent
+        '500':
+          description: Internal server error
+
+  /check-otp:
+    post:
+      tags:
+        - Authentication
+      summary: Check OTP for user activation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                otp:
+                  type: string
+              required:
+                - otp
+      responses:
+        '200':
+          description: User is now active 
+        '404':
+          description: OTP not found
+        '403':
+          description: OTP has expired
+        '500':
+          description: Internal server error

@@ -1,5 +1,5 @@
 import { DataTypes } from 'sequelize';
-import sequelize from '../../Configs/DB.js';
+import sequelize from '../../Configs/Sequelize.js';
 
 const Country = sequelize.define('Country', {
     id: {
@@ -7,7 +7,7 @@ const Country = sequelize.define('Country', {
         autoIncrement: true,
         primaryKey: true,
     },
-    name: {
+    name: { 
         type: DataTypes.STRING(255),
         defaultValue: '',
     },

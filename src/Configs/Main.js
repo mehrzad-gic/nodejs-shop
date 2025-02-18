@@ -1,6 +1,6 @@
 import express from 'express';
 import swaggerConfig from './Swagger.js';
-import connectToDatabase from './Sequelize.js'; // Adjust the path if necessary
+import SequelizeConfig from './Sequelize.js'; // Adjust the path if necessary
 import Express from './Express.js';
 import Errors from './Errors.js';
 import Routes from './Routes.js';
@@ -10,25 +10,21 @@ dotenv.config(); // Load environment variables
 
 export default async function Main() {
 
-    // Connect to the database
-    const sequelize = await connectToDatabase();
+    const sequelize = await SequelizeConfig();
 
-    // Middleware configurations
     Express(app);
-    Routes(app);
-    Errors(app);
 
-    // Swagger configuration
+    Routes(app);
+
     swaggerConfig(app);
 
+    Errors(app);
 
-    // Close the Sequelize connection when your application exits
     process.on('SIGINT', async () => {
         await sequelize.close();
         console.log('Database connection closed.');
         process.exit(0);
     });
-
 
 }
 
