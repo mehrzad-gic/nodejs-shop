@@ -1,7 +1,7 @@
 import { Sequelize } from 'sequelize';
 import logger from 'node-color-log';
 
-const connectToDatabase = async () => {
+const SequelizeConfig = async () => {
 
     const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, process.env.DB_PASSWORD, {
         host: process.env.DB_HOST || 'localhost',
@@ -20,4 +20,4 @@ const connectToDatabase = async () => {
     
 };
 
-export default connectToDatabase;
+export default SequelizeConfig;
