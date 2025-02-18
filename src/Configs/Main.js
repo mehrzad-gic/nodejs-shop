@@ -1,11 +1,9 @@
 import express from 'express';
-import dotenv from 'dotenv';
 import swaggerConfig from './Swagger.js';
 import connectToDatabase from './DB.js'; // Adjust the path if necessary
 import Express from './Express.js';
 import Errors from './Errors.js';
 import Routes from './Routes.js';
-dotenv.config();// Load environment variables from .env file
 const app = express();
 
 export default async function Main() {
