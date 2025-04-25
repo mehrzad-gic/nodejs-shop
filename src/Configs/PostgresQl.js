@@ -1,0 +1,99 @@
+import logger from 'node-color-log';
+import { Pool } from 'pg';
+
+
+const pool = new Pool({
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    database: process.env.DB_NAME,
+    max: 20, // Max connections (default: 10)
+    idleTimeoutMillis: 30000, // Close idle connections after 30s
+    connectionTimeoutMillis: 2000, // Fail fast if can't connect
+});
+
+
+export async function query(sql, params) {
+
+    const client = await pool.connect();
+
+    try {
+        const result = await client.query(sql, params);
+        return result;
+    } catch (e) {
+        logger.error('Query failed:', e);
+        throw e; // Preserve stack trace
+    } finally {
+        await client.release();
+    }
+
+}
+
+
+export async function transaction(queries) {
+
+    const client = await pool.connect();
+
+    try {
+
+        await client.query('BEGIN');
+        const results = [];
+        for (const { sql, params } of queries) {
+            results.push(await client.query(sql, params));
+        }
+        await client.query('COMMIT');
+        return results;
+
+    } catch (e) {
+
+        await client.query('ROLLBACK').catch(() => {}); // Silent rollback fail
+        logger.error('Transaction failed:', e);
+        throw e;
+
+    } finally {
+        await client.release();
+    }
+
+}
+
+
+
+//! remember use client.release() -- to connection be reuseable 
+export async function postgresQlClient() {
+    
+    try {
+
+        const client = await pool.connect();
+
+        console.info('PostgresQl Client is ready');
+
+        return client;
+
+    } catch(e) {
+        console.error(`Client Error: ${e}`);
+        throw new Error(`PostgreSQL connection failed: ${e.message}`, { cause: e });
+    }
+
+    /* usage
+    const client = await postgresQlClient();
+    
+    try{
+    
+        // sample query
+        await client.query("SELECT name,id,user_name FROM users WHERE id = $1 AND email = $2",[1,"example@gmail.com"])
+
+    } catch(e){
+        console.log(e)
+    }
+    finally {
+        await client.release()
+    }
+     
+    */
+
+}
+
+
+
+export default pool;
