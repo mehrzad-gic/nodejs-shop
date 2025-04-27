@@ -2,7 +2,7 @@ import logger from 'node-color-log';
 import { Pool } from 'pg';
 import Logger from '../Helpers/Logger.js';
 import dotenv from 'dotenv';
-dotenv.config();
+dotenv.config()
 
 const pool = new Pool({
     user: process.env.DB_USER,

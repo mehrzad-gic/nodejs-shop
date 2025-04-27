@@ -1,16 +1,12 @@
-import createHttpError from "http-errors";
+import { loginService } from "./Auth.Service.js"
 
-async function login(req,res,next){
+//! @post /auth/login
+async function login(req, res, next) {
 
-    try {
+    loginService(req, req, next)
 
-        const {mobile} = req.body;
-        if(!mobile) throw new createHttpError.BadRequest("user mobile is required")
+}
 
-        
-
-    } catch(e){
-        next(e)
-    }
-
+export {
+    login
 }
