@@ -1,6 +1,8 @@
 import logger from 'node-color-log';
 import { Pool } from 'pg';
-
+import Logger from '../Helpers/Logger.js';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const pool = new Pool({
     user: process.env.DB_USER,
@@ -22,7 +24,7 @@ export async function query(sql, params) {
         const result = await client.query(sql, params);
         return result;
     } catch (e) {
-        logger.error('Query failed:', e);
+        Logger.error(`Query failed: ${e}`);
         throw e; // Preserve stack trace
     } finally {
         await client.release();
@@ -48,7 +50,7 @@ export async function transaction(queries) {
     } catch (e) {
 
         await client.query('ROLLBACK').catch(() => {}); // Silent rollback fail
-        logger.error('Transaction failed:', e);
+        Logger.error(`Transaction failed: ${e}`);
         throw e;
 
     } finally {
@@ -66,12 +68,12 @@ export async function postgresQlClient() {
 
         const client = await pool.connect();
 
-        console.info('PostgresQl Client is ready');
+        Logger.info('PostgresQl Client is ready');
 
         return client;
 
     } catch(e) {
-        console.error(`Client Error: ${e}`);
+        Logger.error(`Client Error: ${e}`);
         throw new Error(`PostgreSQL connection failed: ${e.message}`, { cause: e });
     }
 

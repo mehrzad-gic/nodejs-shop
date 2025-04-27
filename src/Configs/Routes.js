@@ -1,22 +1,23 @@
 import express from 'express';
+import Logger from '../Helpers/Logger.js';
+import authRoutes from '../Modules/Auth/Routes.js';
 
 function Routes(app) {
 
-    // Middleware to parse JSON bodies
     app.use(express.json());
 
-    // Root route with authentication middleware
-    app.get('/', auth, (req, res) => {
-        return res.send("Hello NodeJS");
+    app.get('/', (req, res) => {
+        res.send("Hello NodeJS");
     });
+
+    // auth
+    app.use('/auth', authRoutes);
+
     
-    // Start the server
     const PORT = process.env.APP_PORT || 5000;
-
     app.listen(PORT, () => {
-        console.log(`Server is running on http://localhost:${PORT}`);
+        Logger.info(`Server is running on http://localhost:${PORT}`);
     });
-
 
 }
 

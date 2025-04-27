@@ -6,12 +6,12 @@ import Errors from './Errors.js';
 import Routes from './Routes.js';
 const app = express();
 import dotenv from 'dotenv';
-dotenv.config(); // Load environment variables
+dotenv.config();
 // import Associations from '../Common/Associations.js';
 
 export default async function Main() {
 
-    const sequelize = await SequelizeConfig();
+    // const sequelize = await SequelizeConfig();
 
     Express(app);
 

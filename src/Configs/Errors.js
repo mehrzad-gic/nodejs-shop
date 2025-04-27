@@ -15,7 +15,6 @@ function Errors(app) {
     // Handle other errors
     app.use((error, req, res, next) => {
 
-        console.log(error.message);
         const serverError = createHttpError.InternalServerError();
         const statusCode = error.status || serverError.status;
         const message = error.message || serverError.message;

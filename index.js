@@ -1,11 +1,7 @@
-const express = require('express')
-const app = express()
-const port = 4000
-
-app.get('/', (req, res) => {
-  res.send('Hello World!')
-})
-
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
+import path from 'path'
+import dotenv from 'dotenv';
+dotenv.config({
+    path: path.resolve('/.env') // Adjust path as needed
+});
+import Main from "./src/Configs/Main.js";
+Main()
