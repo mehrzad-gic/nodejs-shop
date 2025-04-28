@@ -41,7 +41,7 @@ async function loginService(req, res, next) {
             if(user){
 
                 // check user status
-                if(user.status == 0) throw new createHttpError.BadRequest('user is baned');
+                if(user.rows.length > 0 &&user.rows[0].status == 0) throw new createHttpError.BadRequest('user is baned');
                 
                 
 

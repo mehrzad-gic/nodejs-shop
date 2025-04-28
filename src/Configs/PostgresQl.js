@@ -16,13 +16,18 @@ const pool = new Pool({
 });
 
 
-export async function query(sql, params) {
+export async function query(sql, params, extra = true) {
 
     const client = await pool.connect();
 
     try {
+        
         const result = await client.query(sql, params);
+
+        if(extra) return result.rows.length > 0 ? result.rows : false;
+        
         return result;
+            
     } catch (e) {
         Logger.error(`Query failed: ${e}`);
         throw e; // Preserve stack trace
