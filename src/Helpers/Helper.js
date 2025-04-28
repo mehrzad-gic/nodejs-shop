@@ -59,16 +59,15 @@ function generateRandomPassword(length = 8) {
 
 
 function logError(err){
-
     const env = process.env.NODE_ENV
-
     if(env == "development"){
-
         logger.error(err)
     }
-
 }
 
+function logInfo(message){
+    logger.info(message)
+}
 
 export {
     logError,
@@ -76,5 +75,6 @@ export {
     makeOTP,
     makeSlug,
     verifyHashPassword,
-    generateRandomPassword
+    generateRandomPassword,
+    logInfo
 }
