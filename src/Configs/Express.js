@@ -10,21 +10,32 @@ import multer from 'multer';
 // Express Configuration
 function Express(app) {
 
+  // cors
+  const allowedOrigins = ['http://localhost:3000', 'https://yourdomain.com'];
   const corsOptions = {
-    origin: 'http://localhost:3000', // Allow only your React app's origin
-    // optionsSuccessStatus: 200 // Some legacy browsers choke on 204
+    origin: (origin, callback) => {
+      if (allowedOrigins.includes(origin) || !origin) {
+        callback(null, true);
+      } else {
+        callback(new Error('CORS blocked: Invalid origin'));
+      }
+    },
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true, // Enable if using cookies/sessions
+    optionsSuccessStatus: 200, // Fix legacy browsers
   };
-  
+
   app.use(cors(corsOptions));
-  
+
   // morgan
   if (process.env.NODE_ENV === 'development') {
     app.use(morgan("dev"));
   }
 
   // bodyParser
-  app.use(bodyParser.json({limit: '50mb'}));
-  app.use(bodyParser.urlencoded({limit: '50mb', extended: true}));
+  app.use(bodyParser.json({ limit: '50mb' }));
+  app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
 
   // cookieParser
