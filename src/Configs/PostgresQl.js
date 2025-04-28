@@ -24,7 +24,7 @@ export async function query(sql, params, extra = true) {
         
         const result = await client.query(sql, params);
 
-        if(extra) return result.rows.length > 0 ? result.rows : false;
+        if(extra) return result?.rows?.length > 0 ? result?.rows : false;
         
         return result;
             
