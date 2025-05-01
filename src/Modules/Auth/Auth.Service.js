@@ -73,7 +73,8 @@ async function loginService(req, res, next) {
                     message: 'Account created',
                     data: {
                         email: input
-                    }
+                    },
+                    success: true
                 });
 
             }
@@ -134,6 +135,7 @@ async function verifyOtpService(req, res, next) {
 
             res.status(200).json({
                 message: 'User logged in',
+                success: true,
             });
 
         } catch (e) {
@@ -185,6 +187,7 @@ function makeToken(data){
     const token = jwt.sign(data, process.env.SECRET_KEY, { expiresIn: '1h' });
     return token;
 }
+
 
 function setCookie(res, token, maxAge){
 
