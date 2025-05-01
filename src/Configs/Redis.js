@@ -2,7 +2,6 @@ import Redis from 'ioredis';
 import logger from '../Helpers/Logger.js';
 
 
-console.log(process.env.REDIS_PORT)
 const redisClient = new Redis({
   host: process.env.REDIS_HOST || '127.0.0.1',
   port: process.env.REDIS_PORT || 6381,

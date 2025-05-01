@@ -33,11 +33,11 @@ function Routes(app) {
 
       // Get pagination parameters from query (e.g., /test-pg?page=1&limit=100)
       const page = parseInt(req.query.page) || 1;
-      const limit = parseInt(req.query.limit) || 100;
+      const limit = parseInt(req.query.limit) || 20;
       const offset = (page - 1) * limit;
 
       const client = await postgresQlClient();
-      const {rows} = await client.query('SELECT name,id FROM tags ORDER BY id LIMIT $1 OFFSET $2', [limit, offset],);
+      const {rows} = await client.query('SELECT id FROM tags ORDER BY id LIMIT $1 OFFSET $2', [limit, offset],);
       client.release();
 
       res.json(rows);

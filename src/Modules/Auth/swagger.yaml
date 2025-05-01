@@ -1,0 +1,93 @@
+openapi: 3.0.0
+info:
+  title: Authentication API
+  version: 1.0.0
+  description: API for user authentication and OTP verification
+
+paths:
+  /auth/login:
+    post:
+      summary: Login or register user
+      description: |
+        This endpoint handles both login and registration.
+        - If user exists, sends OTP
+        - If user doesn't exist, creates new account and sends OTP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - input
+              properties:
+                input:
+                  type: string
+                  description: Email or phone number
+                  example: "user@example.com"
+      responses:
+        '200':
+          description: OTP sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "OTP sent to user"
+                  data:
+                    type: object
+                    properties:
+                      otp:
+                        type: string
+                        example: "123456"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Input must be a phone number or email"
+
+  /auth/verify-otp:
+    post:
+      summary: Verify OTP and login user
+      description: Verifies the OTP and logs in the user if valid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - otp
+              properties:
+                otp:
+                  type: string
+                  description: 6-digit OTP code
+                  example: "123456"
+      responses:
+        '200':
+          description: User logged in successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "User logged in"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "OTP is not valid"

@@ -1,4 +1,4 @@
-import { loginService } from "./Auth.Service.js"
+import { loginService, verifyOtpService } from "./Auth.Service.js"
 
 //! @post /auth/login
 async function login(req, res, next) {
@@ -7,6 +7,14 @@ async function login(req, res, next) {
 
 }
 
+//! @post /auth/verify-otp
+async function verifyOtp(req, res, next) {
+
+    verifyOtpService(req, req, next)
+
+}
+
 export {
-    login
+    login,
+    verifyOtp
 }
