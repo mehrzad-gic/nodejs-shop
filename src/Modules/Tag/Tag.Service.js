@@ -42,12 +42,12 @@ export const storeService = async (req, res, next) => {
         const { error } = tagValidation.validate(req.body);
         if(error) next(createHttpError.BadRequest(error.message));
 
-        const { name, description } = req.body;
+        const { name,translations, description } = req.body;
 
         const slug = await makeSlug(name,"tags");
 
-        const query = "insert into tags (name,slug,description) values ($1, $2, $3) returning *";
-        const result = await postgresQlClient.query(query, [name, slug, description]);
+        const query = "insert into tags (name,slug,description,translations) values ($1, $2, $3, $4) returning *";
+        const result = await postgresQlClient.query(query, [name, slug, description,translations]);
 
         res.status(200).json({
             data: result.rows[0],
@@ -96,10 +96,10 @@ export const updateService = async (req, res, next) => {
         const tag = await postgresQlClient.query("select * from tags where slug = $1", [slug]);
         if(!tag.rows[0]) next(createHttpError.NotFound("Tag not found"));
 
-        const { name, description } = req.body;
+        const { name, translations, description } = req.body;
 
-        const query = "update tags set name = $1, description = $2 where slug = $3 returning *";
-        const result = await postgresQlClient.query(query, [name, description, slug]);
+        const query = "update tags set name = $1, description = $2, translations = $3 where slug = $4 returning *";
+        const result = await postgresQlClient.query(query, [name, description, translations, slug]);
 
         res.status(200).json({
             data: result.rows[0],

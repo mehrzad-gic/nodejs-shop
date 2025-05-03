@@ -3,6 +3,7 @@ import { categoryValidation } from "./validation.js";
 import createHttpError from "http-errors";
 import { makeSlug } from "../../Helpers/Helper.js";
 
+
 export const indexService = async (req, res, next) => {
 
     try {
@@ -17,8 +18,6 @@ export const indexService = async (req, res, next) => {
         const query = "select * from categories where slug like '%$1%' and status = $2 limit $3 offset $4";
         const result = await postgresQlClient.query(query, [search, status, limit, offset]);
         
-        const categories = await postgresQlClient.query("select * from categories");
-
         res.status(200).json({
             data: result.rows,
             pagination: {
@@ -122,12 +121,12 @@ export const destroyService = async (req, res, next) => {
         const category = await postgresQlClient.query("select * from categories where slug = $1", [slug]);
         if(!category.rows[0]) next(createHttpError.NotFound("Category not found"));
 
-        const query = "delete from tags where slug = $1";
+        const query = "delete from categories where slug = $1";
         await postgresQlClient.query(query, [slug]);
 
         res.status(200).json({
             success: true,
-            message: "Tag deleted successfully"
+            message: "Category deleted successfully"
         });
 
     } catch (error) {
@@ -142,15 +141,15 @@ export const changeStatusService = async (req, res, next) => {
 
         const { slug } = req.params;
 
-        const tag = await postgresQlClient.query("select * from tags where slug = $1", [slug]);
-        if(!tag.rows[0]) next(createHttpError.NotFound("Tag not found"));
+        const category = await postgresQlClient.query("select * from categories where slug = $1", [slug]);
+        if(!category.rows[0]) next(createHttpError.NotFound("Category not found"));
 
-        const query = "update tags set status = $1 where slug = $2";
-        await postgresQlClient.query(query, [tag.rows[0].status === 1 ? 0 : 1, slug]);
+        const query = "update categories set status = $1 where slug = $2";
+        await postgresQlClient.query(query, [category.rows[0].status === 1 ? 0 : 1, slug]);
 
         res.status(200).json({
             success: true,
-            message: "Tag status updated successfully"
+            message: "Category status updated successfully"
         });
 
     } catch (error) {
