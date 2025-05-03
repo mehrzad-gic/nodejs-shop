@@ -37,7 +37,7 @@ async function loginService(req, res, next) {
                 await client.query("insert into otp (user_id, code, expire_in) values ($1, $2, $3)",[user.rows[0].id, otpCode, otpExpireIn]);
                 
                 // send otp to user
-                await emailQueue.add({
+                await emailQueue.add('sendEmail',{
                     to: user.rows[0].email,
                     subject: 'OTP',
                     text: `Your OTP is ${otpCode}`
@@ -63,7 +63,7 @@ async function loginService(req, res, next) {
                 await client.query("insert into otp (user_id, code, expire_in) values ($1, $2, $3)",[user.rows[0].id, otpCode, otpExpireIn]);
 
                 // send otp to user
-                await emailQueue.add({
+                await emailQueue.add('sendEmail',{
                     to: input,
                     subject: 'OTP',
                     text: `Your OTP is ${otpCode}`

@@ -1,4 +1,3 @@
-import logger from 'node-color-log';
 import { Pool } from 'pg';
 import Logger from '../Helpers/Logger.js';
 import dotenv from 'dotenv';

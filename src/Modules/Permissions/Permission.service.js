@@ -167,17 +167,9 @@ async function assignPermissionService(req, res, next) {
 
         const { role_id, permissions } = req.body;
 
-        if (!role_id || !permissions) {
-            return next(createHttpError.BadRequest("Role ID and permissions are required"));
-        }
-
-        if (!Array.isArray(permissions)) {
-            return next(createHttpError.BadRequest("Permissions must be an array"));
-        }
-
-        if (permissions.length === 0) {
-            return next(createHttpError.BadRequest("Permissions array cannot be empty"));
-        }
+        if (!role_id || !permissions) next(createHttpError.BadRequest("Role ID and permissions are required"));
+        if (!Array.isArray(permissions)) return next(createHttpError.BadRequest("Permissions must be an array"));
+        if (permissions.length === 0) return next(createHttpError.BadRequest("Permissions array cannot be empty"));
 
         // Check if role exists
         const role = await postgresQlClient.query("SELECT * FROM roles WHERE id = $1", [role_id]);

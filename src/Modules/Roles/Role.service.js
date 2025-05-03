@@ -2,6 +2,8 @@ import { postgresQlClient } from "../../Configs/PostgresQl.js";
 import createHttpError from "http-errors";
 import { makeSlug } from "../../Helpers/Helper.js";
 
+
+
 async function  indexService(req,res,next){
 
     try {
@@ -55,7 +57,6 @@ async function storeService(req,res,next){
 }
 
 
-
 async function showService(req,res,next){
 
     try {
@@ -83,7 +84,7 @@ async function updateService(req,res,next){
     try {
         
         const { slug } = req.params;
-        const { name, description } = req.body;
+        const { name, description, permissions } = req.body;
 
         const { error } = roleSchema.validate(req.body);
         if(error) next(createHttpError.BadRequest(error.message));
@@ -91,6 +92,20 @@ async function updateService(req,res,next){
         const query = "update roles set name = $1, description = $2 where slug = $3 returning *";
         const role = await postgresQlClient.query(query, [name, description, slug]);
 
+        if(permissions && Array.isArray(permissions) && permissions.length > 0){
+
+            // remove all old permissions
+            const query = "delete from permission_role where role_id = $1";
+            await postgresQlClient.query(query, [role.rows[0].id]);
+
+            // assign new permissions
+            permissions.forEach(async (permission) => {
+                const query = "insert into permission_role (role_id, permission_id) values ($1, $2)";
+                await postgresQlClient.query(query, [role.rows[0].id, permission]);
+            });
+
+        }
+        
         res.status(200).json({
             success: true,
             message: "Role updated successfully",
@@ -193,5 +208,6 @@ async function assignRoleService(req,res,next){
     }
 
 }
+
 
 export { indexService, storeService, showService, updateService, destroyService, assignRoleService, changeStatusService };

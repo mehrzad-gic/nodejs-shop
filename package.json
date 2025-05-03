@@ -3,9 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest --no-cache",
-    "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch --no-cache",
-    "test:coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage --no-cache",
+    "test": "jest",
     "start": "nodemon index.js"
   },
   "author": "",
