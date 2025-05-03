@@ -2,6 +2,7 @@ import { postgresQlClient } from "../../Configs/PostgresQl.js";
 import createHttpError from "http-errors";
 import { makeSlug, checkExistByField, makeHashPassword } from "../../Helpers/Helper.js";
 import { userSchema } from "./validation.js";
+import UploadQueue from "../../Queues/UpoladQueue.js";
 
 
 //! services ==========================================================================
@@ -78,7 +79,8 @@ async function showService(req, res, next){
         const existUser = await checkExistByField("slug", slug, "users");
         if(!existUser) next(createHttpError.NotFound("User not found"));
 
-        const query = "select * from users where slug = $1";
+        // user with roles
+        const query = "select u.*, r.name as role_name from users u left join roles r on u.role_id = r.id where u.slug = $1";
         const user = await postgresQlClient.query(query, [slug]);
 
         res.status(200).json({
@@ -108,9 +110,22 @@ async function updateService(req, res, next){
         const { email, image, name, phone } = req.body;
 
         if(image){
-            // const uploadedImage = await uploadImages(image);
-            // const imageUrl = uploadedImage[0].url;
-            await 
+
+            if(existUser.image){
+                await UploadQueue.add('deleteFile', {
+                    file: existUser.image
+                });
+            }
+
+            await UploadQueue.add('uploadFile', {
+                files: image,
+                table: 'users',
+                img_field: 'image',
+                data: {
+                    id: existUser.id
+                }
+            });
+
         }
 
         const query = "update users set email = $1, name = $2, phone = $3 where slug = $4 returning *";  
@@ -139,6 +154,12 @@ async function destroyService(req, res, next){
 
         const query = "delete from users where slug = $1";
         await postgresQlClient.query(query, [slug]);
+
+        if(existUser.image){
+            await UploadQueue.add('deleteFile', {
+                file: existUser.image
+            });
+        }
 
         res.status(200).json({
             success: true,
