@@ -95,8 +95,15 @@ async function updateService(req, res, next){
 
         const seller = await postgresQlClient.query("select * from sellers where slug = $1", [slug]);
         if(!seller.rows[0]) next(createHttpError.NotFound("Seller not found"));
+        if(seller.rows[0].status !== "active") next(createHttpError.BadRequest("Seller is not active"));
+        if(seller.rows[0].changes > 2) next(createHttpError.BadRequest("You can only change the seller details 2 times || Contact Admin with ticket for more details"));
 
-        const { name, latitude, longitude, address, description, slug_input } = req.body;  
+        // request body
+        const { name, latitude,longitude, address, description, slug_input } = req.body;  
+
+        // validate request body
+        const {error} = sellerValidation.validate(req.body);
+        if(error) next(createHttpError.BadRequest(error[0].message));
 
         if(slug_input !== slug){
         
@@ -108,8 +115,8 @@ async function updateService(req, res, next){
 
         }
 
-        const query = "update sellers set name = $1, coordinates = ST_SetSRID(ST_MakePoint($2, $3), 4326), address = $4, description = $5, slug = $6, slug_changes = $7 where slug = $8";
-        const result = await postgresQlClient.query(query, [name, longitude, latitude, address, description, slug_input, seller.rows[0].slug_changes + 1, slug]);
+        const query = "update sellers set name = $1, coordinates = ST_SetSRID(ST_MakePoint($2, $3), 4326), address = $4, description = $5, slug = $6, slug_changes = $7, changes = $8 where slug = $9";
+        const result = await postgresQlClient.query(query, [name, longitude, latitude, address, description, slug_input, slug_input ? seller.rows[0].slug_changes + 1 : seller.rows[0].slug_changes,seller.rows[0].changes + 1, slug]);
 
         res.status(200).json({
             data: result.rows[0],
@@ -124,8 +131,48 @@ async function updateService(req, res, next){
 }
 
 
-async function destroyService(req, res, next){
+async function updateAsAdminService(req, res, next){
 
+    try {
+
+        const { slug } = req.params;
+
+        const seller = await postgresQlClient.query("select * from sellers where slug = $1", [slug]);
+        if(!seller.rows[0]) next(createHttpError.NotFound("Seller not found"));
+
+        const { name, latitude, longitude, address, description, slug_input, status } = req.body;  
+
+        // validate request body
+        const {error} = sellerValidation.validate(req.body);
+        if(error) next(createHttpError.BadRequest(error[0].message));
+
+        if(slug_input !== slug){
+        
+            const seller_check = await postgresQlClient.query("select * from sellers where slug = $1", [slug_input]);
+
+            if(seller_check.rows[0]) next(createHttpError.BadRequest("Seller slug already exists"));
+        
+            if(seller.rows[0].slug_changes > 1) next(createHttpError.BadRequest("You can only change the slug once"));
+
+        }
+
+        const query = "update sellers set name = $1, coordinates = ST_SetSRID(ST_MakePoint($2, $3), 4326), address = $4, description = $5, slug = $6, slug_changes = $7, status = $8 where slug = $9";
+
+        const result = await postgresQlClient.query(query, [name, longitude, latitude, address, description, slug_input, slug_input ? seller.rows[0].slug_changes + 1 : seller.rows[0].slug_changes, status, slug]);
+
+        res.status(200).json({
+            data: result.rows[0],
+            success: true,
+            message: "Seller updated successfully"
+        })
+
+    } catch (error) {
+        next(error)
+    }
+
+}
+
+async function destroyService(req, res, next){
     try {
 
         const { slug } = req.params;
@@ -142,33 +189,6 @@ async function destroyService(req, res, next){
             data: result.rows[0],
             success: true,
             message: "Seller deleted successfully"
-        })
-
-    } catch (error) {
-        next(error)
-    }
-
-}
-
-
-
-async function changeStatusService(req, res, next){
-
-    try {
-
-        const { slug } = req.params;
-
-        const seller = await postgresQlClient.query("select * from sellers where slug = $1", [slug]);
-        if(!seller.rows[0]) throw createHttpError.NotFound("Seller not found");
-
-        const status = seller.rows[0].status === 1 ? 0 : 1;
-        const query = "update sellers set status = $1 where slug = $2";
-        const result = await postgresQlClient.query(query, [status, slug]);
-
-        res.status(200).json({
-            data: result.rows[0],
-            success: true,
-            message: "Seller status updated successfully"
         })
 
     } catch (error) {
@@ -211,4 +231,4 @@ async function registerService(req, res, next){
 }
 
 
-export { indexService, storeService, showService, updateService, destroyService, changeStatusService };
+export { indexService, storeService, showService, updateService, destroyService, registerService, updateAsAdminService };

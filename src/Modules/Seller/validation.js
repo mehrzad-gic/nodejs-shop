@@ -10,7 +10,15 @@ const sellerValidation = Joi.object({
     image: Joi.string().optional(),
     images: Joi.string().optional(),
     description: Joi.string().required(),
+    status: Joi.string().valid(...Object.values(status)).optional(),    
 })
 
 
-export { sellerValidation };
+// enums
+const status = {
+    ACTIVE: "active",
+    BLOCKED: "blocked",
+    PENDING: "pending",
+}
+
+export { sellerValidation, status };

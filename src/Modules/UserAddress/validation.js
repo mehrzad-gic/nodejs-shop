@@ -11,4 +11,5 @@ const userAddressSchema = Joi.object({
     longitude: Joi.number().required(),
 });
 
+
 export { userAddressSchema };
