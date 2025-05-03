@@ -10,7 +10,7 @@ async function indexService(req, res, next){
         page = parseInt(page);
         limit = parseInt(limit);
         search = search.toLowerCase() || "";
-        status = parseInt(status) || 1;
+        status = status.toLowerCase() || "active";
         const offset = (page - 1) * limit;
 
         const query = "select * from sellers WHERE slug like '%$1%' and status = $2 limit $3 offset $4";
@@ -35,10 +35,14 @@ async function indexService(req, res, next){
 
 
 async function storeService(req, res, next){
- 
+    
     try {
 
-        const { name, username, latitude, longitude, address, image, images, description } = req.body;
+        const { name, username, latitude, longitude, address, description } = req.body;
+
+        // validate request body
+        const {error} = sellerValidation.validate(req.body);
+        if(error) next(createHttpError.BadRequest(error[0].message));
 
         // check if user exists
         const user = await postgresQlClient.query("select * from users where slug = $1", [username]);
@@ -96,7 +100,7 @@ async function updateService(req, res, next){
         const seller = await postgresQlClient.query("select * from sellers where slug = $1", [slug]);
         if(!seller.rows[0]) next(createHttpError.NotFound("Seller not found"));
         if(seller.rows[0].status !== "active") next(createHttpError.BadRequest("Seller is not active"));
-        if(seller.rows[0].changes > 2) next(createHttpError.BadRequest("You can only change the seller details 2 times || Contact Admin with ticket for more details"));
+        if(seller.rows[0].changes >= 1) next(createHttpError.BadRequest("You can only change details once || Contact Admin with ticket for more details"));
 
         // request body
         const { name, latitude,longitude, address, description, slug_input } = req.body;  

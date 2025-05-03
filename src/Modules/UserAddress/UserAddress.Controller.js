@@ -1,4 +1,4 @@
-import { indexService, storeService, showService, updateService, destroyService, userAddressesService, changeStatusService} from "./UserAddress.service.js";
+import { indexService, storeService, showService, updateService, destroyService, userAddressesService, changeStatusService} from "./UserAddress.Service.js";
 
 
 async function index(req, res, next){

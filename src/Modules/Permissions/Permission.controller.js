@@ -6,7 +6,7 @@ import {
     destroyService,
     changeStatusService,
     assignPermissionService
-} from "./Permission.service.js";
+} from "./Permission.Service.js";
 
 
 // Get all permissions
