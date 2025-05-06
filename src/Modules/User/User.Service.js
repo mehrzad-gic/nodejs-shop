@@ -107,9 +107,9 @@ async function updateService(req, res, next){
         const { error } = userSchema.validate(req.body);
         if(error) next(createHttpError.BadRequest(error.message));
 
-        const { email, image, name, phone } = req.body;
+        const { email, name, phone } = req.body;
 
-        if(image){
+        if(req.file){
 
             if(existUser.image){
                 await UploadQueue.add('deleteFile', {
@@ -118,7 +118,7 @@ async function updateService(req, res, next){
             }
 
             await UploadQueue.add('uploadFile', {
-                files: image,
+                files: req.file,
                 table: 'users',
                 img_field: 'image',
                 data: {

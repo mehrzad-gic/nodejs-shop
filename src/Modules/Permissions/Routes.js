@@ -7,7 +7,7 @@ import {
     destroy,
     changeStatus,
     assignPermission
-} from "./Permission.controller.js";
+} from "./Permission.Controller.js";
 const permissionRoutes = Router();
 
 permissionRoutes.get("/", index);
