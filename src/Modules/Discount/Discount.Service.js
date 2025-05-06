@@ -2,7 +2,7 @@ import { query } from "../../Configs/PostgresQl.js";
 import { makeSlug } from "../../Helpers/Helper.js";
 import createHttpError from "http-errors";
 
-export const indexService = async (req, res, next) => {
+export const publicIndexService = async (req, res, next) => {
  
     try {
 
@@ -34,16 +34,54 @@ export const indexService = async (req, res, next) => {
 
 }
 
+export const privateIndexService = async (req, res, next) => {
+
+    try {
+
+        let { page, limit, search, status, user_id } = req.query;
+        page = parseInt(page);
+        limit = parseInt(limit);
+        search = search.toLowerCase() || "";
+        status = parseInt(status) || 1;
+        user_id = parseInt(user_id) || null;
+        const offset = (page - 1) * limit;
+
+        const sql = "select * from discounts where user_id is not null and slug like '%$1%' and status = $2 and user_id = $3 limit $4 offset $5";
+        const result = await query(sql, [search, status, user_id, limit, offset]);
+        
+        res.status(200).json({
+            data: result.rows,
+            pagination: {
+                page: page,
+                limit: limit,
+                total: result.rowCount,
+                totalPage: Math.ceil(result.rowCount / limit)
+            },
+            success: true,
+            message: "Discounts fetched successfully"
+        });
+           
+    } catch (error) {
+        next(createHttpError.InternalServerError(error.message));
+    }
+
+}
+
 export const storeService = async (req, res, next) => {
 
     try {
         
-        const { name, description, value, status, start_date, end_date, maximum, type } = req.body;
+        const { name, description, value, status, start_date, end_date, maximum, type, user_id } = req.body;
        
         const slug = await makeSlug(name);
 
-        const sql = "insert into discounts (name, description, value, status, start_date, end_date, maximum, type, slug) values ($1, $2, $3, $4, $5, $6, $7, $8, $9)";
-        const result = await query(sql, [name, description, value, status, start_date, end_date, maximum, type, slug]);
+        if (user_id) {
+            const user = await query("select * from users where id = $1", [user_id]);
+            if (user.rows.length === 0) return next(createHttpError.NotFound("User not found"));
+        }
+
+        const sql = "insert into discounts (name, description, value, status, start_date, end_date, maximum, type, slug, user_id) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) returning *";
+        const result = await query(sql, [name, description, value, status, start_date, end_date, maximum, type, slug, user_id]);
 
         res.status(200).json({
             data: result.rows[0],
@@ -86,10 +124,15 @@ export const updateService = async (req, res, next) => {
     try {
 
         const { id } = req.params;
-        const { name, description, value, status, start_date, end_date, maximum, type } = req.body;
+        const { name, description, value, status, start_date, end_date, maximum, type, user_id } = req.body;
 
-        const sql = "update discounts set name = $1, description = $2, value = $3, status = $4, start_date = $5, end_date = $6, maximum = $7, type = $8 where id = $9";
-        const result = await query(sql, [name, description, value, status, start_date, end_date, maximum, type, id]);
+        if (user_id) {  
+            const user = await query("select * from users where id = $1", [user_id]);
+            if (user.rows.length === 0) return next(createHttpError.NotFound("User not found"));
+        }
+
+        const sql = "update discounts set name = $1, description = $2, value = $3, status = $4, start_date = $5, end_date = $6, maximum = $7, type = $8, user_id = $9 where id = $10";
+        const result = await query(sql, [name, description, value, status, start_date, end_date, maximum, type, user_id, id]);
 
         if (result.rowCount === 0) return next(createHttpError.NotFound("Discount not found"));
 

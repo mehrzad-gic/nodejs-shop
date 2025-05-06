@@ -9,4 +9,5 @@ export const discountValidation = Joi.object({
     end_date: Joi.date().required(),
     maximum: Joi.number().required(),
     type: Joi.string().required().valid("percentage", "number"),
+    user_id: Joi.number().optional(),
 });
