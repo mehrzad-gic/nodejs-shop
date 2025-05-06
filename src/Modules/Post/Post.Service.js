@@ -52,8 +52,8 @@ export const storeService = async (req, res, next) => {
         await client.query('BEGIN');
 
         // insert post transaction
-        const sql = "insert into posts (name, slug, description, status) values ($1, $2, $3, $4) returning *";
-        const result = await client.query(sql, [name, slug, description, status]);
+        const sql = "insert into posts (name, slug ,description, status, user_id) values ($1, $2, $3, $4, $5) returning *";
+        const result = await client.query(sql, [name, slug, description, status, req.user.id]);
 
         if(result.rows.length === 0) {
             await client.query('ROLLBACK');
