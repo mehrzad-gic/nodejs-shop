@@ -1,6 +1,8 @@
-import { postgresQlClient } from "../../Configs/PostgresQl.js";
+import { query } from "../../Configs/PostgresQl.js";
 import createHttpError from "http-errors";
 import { workerValidation, workerUpdateValidation } from "./validation.js";
+import uploadQueue from "../../Queues/UpoladQueue.js";
+
 
 async function indexService(req, res, next){
  
@@ -13,8 +15,8 @@ async function indexService(req, res, next){
         status = status.toLowerCase() || "active";
         const offset = (page - 1) * limit;
 
-        const query = "select * from workers WHERE slug like '%$1%' and status = $2 limit $3 offset $4";
-        const result = await postgresQlClient.query(query, [search, status, limit, offset]);
+        const sql = "select * from workers WHERE slug like '%$1%' and status = $2 limit $3 offset $4";
+        const result = await query(sql, [search, status, limit, offset]);
 
         res.status(200).json({
             data: result.rows,
@@ -45,23 +47,45 @@ async function storeService(req, res, next){
         if(error) next(createHttpError.BadRequest(error[0].message));
 
         // check city exists
-        const city_check = await postgresQlClient.query("select * from cities where slug = $1", [city]);
+        const city_check = await query("select * from cities where slug = $1", [city]);
         if(!city_check.rows[0]) next(createHttpError.NotFound("City not found"));
 
         // check if user exists
-        const user = await postgresQlClient.query("select * from users where slug = $1", [username]);
+        const user = await query("select * from users where slug = $1", [username]);
         if(!user.rows[0]) next(createHttpError.NotFound("User not found"));
     
         // check if worker already exists
-        const worker = await postgresQlClient.query("select * from workers where user_id = $1", [user.rows[0].id]);
+        const worker = await query("select * from workers where user_id = $1", [user.rows[0].id]);
         if(worker.rows[0]) next(createHttpError.BadRequest("Worker already exists"));
         
         // create worker
-        const query = "insert into workers (name, user_id, address, description, national_code, city, body_info) values ($1, $2, $3, $4, $5, $6, $7) returning *";
-        const result = await postgresQlClient.query(query, [name, user.rows[0].id, address, description, national_code, city, JSON.stringify(body_info)]);
+        const sql = "insert into workers (name, user_id, address, description, national_code, city, body_info) values ($1, $2, $3, $4, $5, $6, $7) returning *";
+        const result = await query(sql, [name, user.rows[0].id, address, description, national_code, city, JSON.stringify(body_info)]);
+
+        const finalWorker = result.rows[0];
+
+        // upload images
+        if(req.files && req.files.length > 0){
+            if(req.files.image){
+                await uploadQueue.add("uploadFile", {
+                    files: req.files.image,
+                    table: "workers",
+                    img_field: "image",
+                    data: { id: finalWorker.id, slug: finalWorker.slug }
+                });
+            }
+            if(req.files.images){
+                await uploadQueue.add("uploadFile", {
+                    files: req.files.images,
+                    table: "workers",
+                    img_field: "images",
+                    data: { id: finalWorker.id, slug: finalWorker.slug }
+                });
+            }
+        }
 
         res.status(201).json({
-            data: result.rows[0],
+            data: finalWorker,
             success: true,
             message: "Worker created successfully"
         })
@@ -79,8 +103,8 @@ async function showService(req, res, next){
 
         const { slug } = req.params;
 
-        const query = "select * from workers where slug = $1";
-        const result = await postgresQlClient.query(query, [slug]);
+        const sql = "select * from workers where slug = $1";
+        const result = await query(sql, [slug]);
 
         res.status(200).json({
             data: result.rows[0],
@@ -108,7 +132,7 @@ async function updateService(req, res, next){
         const {error} = workerUpdateValidation.validate(req.body);
         if(error) next(createHttpError.BadRequest(error[0].message));
 
-        const worker = await postgresQlClient.query("select * from workers where slug = $1", [slug]);
+        const worker = await query("select * from workers where slug = $1", [slug]);
         if(!worker.rows[0]) next(createHttpError.NotFound("Worker not found"));
         if(worker.rows[0].status !== "active") next(createHttpError.BadRequest("Worker is not active"));
         if(worker.rows[0].changes >= 1) next(createHttpError.BadRequest("You can only change details once || Contact Admin with ticket for more details"));
@@ -117,17 +141,49 @@ async function updateService(req, res, next){
         
             if(worker.rows[0].slug_changes > 1) next(createHttpError.BadRequest("You can only change the slug once"));
 
-            const worker_check = await postgresQlClient.query("select * from workers where slug = $1", [slug_input]);
+            const worker_check = await query("select * from workers where slug = $1", [slug_input]);
 
             if(worker_check.rows[0]) next(createHttpError.BadRequest("Worker slug already exists"));
 
         }
 
-        const query = "update workers set name = $1, address = $2, description = $3, slug = $4, slug_changes = $5, changes = $6 where slug = $7";
-        const result = await postgresQlClient.query(query, [name, address, description, slug_input, slug_input ? worker.rows[0].slug_changes + 1 : worker.rows[0].slug_changes,worker.rows[0].changes + 1, slug]);
+        const sql = "update workers set name = $1, address = $2, description = $3, slug = $4, slug_changes = $5, changes = $6 where slug = $7";
+        const result = await query(sql, [name, address, description, slug_input, slug_input ? worker.rows[0].slug_changes + 1 : worker.rows[0].slug_changes,worker.rows[0].changes + 1, slug]);
+
+        const finalWorker = result.rows[0];
+
+        // upload images
+        if(req.files && req.files.length > 0){
+            if(req.files.image){
+                if(finalWorker.image){
+                    await uploadQueue.add("deleteFile", {
+                        file: finalWorker.image,
+                    });
+                }
+                await uploadQueue.add("uploadFile", {
+                    files: req.files.image,
+                    table: "workers",
+                    img_field: "image",
+                    data: { id: finalWorker.id, slug: finalWorker.slug }
+                });
+            }
+            if(req.files.images){
+                if(finalWorker.images){
+                    await uploadQueue.add("deleteFile", {
+                        files: finalWorker.images,
+                    });
+                }
+                await uploadQueue.add("uploadFile", {
+                    files: req.files.images,
+                    table: "workers",
+                    img_field: "images",
+                    data: { id: finalWorker.id, slug: finalWorker.slug }
+                });
+            }
+        }
 
         res.status(200).json({
-            data: result.rows[0],
+            data: finalWorker,
             success: true,
             message: "Worker updated successfully"
         })

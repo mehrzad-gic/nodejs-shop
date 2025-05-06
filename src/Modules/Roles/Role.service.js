@@ -1,4 +1,4 @@
-import { postgresQlClient } from "../../Configs/PostgresQl.js";
+import { postgresQlClient,query } from "../../Configs/PostgresQl.js";
 import createHttpError from "http-errors";
 import { makeSlug } from "../../Helpers/Helper.js";
 
@@ -13,8 +13,8 @@ async function  indexService(req,res,next){
         limit = parseInt(limit);
         const offset = (page - 1) * limit;
 
-        const query = "select * from roles limit $1 offset $2";
-        const roles = await postgresQlClient.query(query, [limit, offset]);
+        const sql = "select * from roles limit $1 offset $2";
+        const roles = await query(sql, [limit, offset]);
 
         res.status(200).json({
             success: true,
@@ -41,8 +41,8 @@ async function storeService(req,res,next){
         if(error) next(createHttpError.BadRequest(error.message));
 
         const slug = await makeSlug(name, "roles");
-        const query = "insert into roles (name, description, slug) values ($1, $2, $3) returning *";
-        const role = await postgresQlClient.query(query, [name, description, slug]);
+        const sql = "insert into roles (name, description, slug) values ($1, $2, $3) returning *";
+        const role = await query(sql, [name, description, slug]);
 
         res.status(201).json({
             success: true,
@@ -63,8 +63,8 @@ async function showService(req,res,next){
         
         const { slug } = req.params;
 
-        const query = "select * from roles where slug = $1";
-        const role = await postgresQlClient.query(query, [slug]);
+        const sql = "select * from roles where slug = $1";
+        const role = await query(sql, [slug]);
 
         res.status(200).json({
             success: true,
@@ -81,6 +81,8 @@ async function showService(req,res,next){
 
 async function updateService(req,res,next){
 
+    const client = await postgresQlClient();
+
     try {
         
         const { slug } = req.params;
@@ -89,23 +91,27 @@ async function updateService(req,res,next){
         const { error } = roleSchema.validate(req.body);
         if(error) next(createHttpError.BadRequest(error.message));
 
-        const query = "update roles set name = $1, description = $2 where slug = $3 returning *";
-        const role = await postgresQlClient.query(query, [name, description, slug]);
+        await client.query('BEGIN');
+
+        const sql = "update roles set name = $1, description = $2 where slug = $3 returning *";
+        const role = await client.query(sql, [name, description, slug]);
 
         if(permissions && Array.isArray(permissions) && permissions.length > 0){
 
             // remove all old permissions
-            const query = "delete from permission_role where role_id = $1";
-            await postgresQlClient.query(query, [role.rows[0].id]);
+            const sql = "delete from permission_role where role_id = $1";
+            await client.query(sql, [role.rows[0].id]);
 
             // assign new permissions
             permissions.forEach(async (permission) => {
-                const query = "insert into permission_role (role_id, permission_id) values ($1, $2)";
-                await postgresQlClient.query(query, [role.rows[0].id, permission]);
+                const sql = "insert into permission_role (role_id, permission_id) values ($1, $2)";
+                await client.query(sql, [role.rows[0].id, permission]);
             });
 
         }
         
+        await client.query('COMMIT');
+
         res.status(200).json({
             success: true,
             message: "Role updated successfully",
@@ -113,7 +119,10 @@ async function updateService(req,res,next){
         });
 
     } catch (error) {
+        await client.query('ROLLBACK');
         next(error);
+    } finally {
+        client.release();
     }
 
 }
@@ -124,8 +133,8 @@ async function destroyService(req,res,next){
     try {
  
         const { slug } = req.params;
-        const query = "delete from roles where slug = $1";
-        await postgresQlClient.query(query, [slug]);
+        const sql = "delete from roles where slug = $1";
+        await query(sql, [slug]);
 
         res.status(200).json({
             success: true,
@@ -144,13 +153,13 @@ async function changeStatusService(req,res,next){
         
         const { slug } = req.params;
 
-        const role = await postgresQlClient.query("select * from roles where slug = $1", [slug]);
+        const role = await query("select * from roles where slug = $1", [slug]);
         if(role.rows.length == 0) next(createHttpError.BadRequest("Role not found"));
 
         const status = role.rows[0].status == 1 ? 0 : 1;
 
-        const query = "update roles set status = $1 where slug = $2 returning *";
-        const updatedRole = await postgresQlClient.query(query, [status, slug]);
+        const sql = "update roles set status = $1 where slug = $2 returning *";
+        const updatedRole = await query(sql, [status, slug]);
 
         res.status(200).json({
             success: true,
@@ -169,6 +178,8 @@ async function changeStatusService(req,res,next){
 //! role user
 async function assignRoleService(req,res,next){
 
+    const client = await postgresQlClient();
+    
     try {
         
         const { user_id, roles } = req.body;
@@ -183,19 +194,22 @@ async function assignRoleService(req,res,next){
         if(roles.length == 0) next(createHttpError.BadRequest("Roles must be an array"));
 
         // check if user exists
-        const user = await postgresQlClient.query("select * from users where id = $1", [user_id]);
+        const user = await query("select * from users where id = $1", [user_id]);
         if(user.rows.length == 0) next(createHttpError.BadRequest("User not found"));
 
+        await client.query('BEGIN');
 
         // remove all old roles
-        const query = "delete from role_user where user_id = $1";
-        await postgresQlClient.query(query, [user_id]);
+        const sql = "delete from role_user where user_id = $1";
+        await client.query(sql, [user_id]);
 
         // assign new roles
         roles.forEach(async (role) => {
-            const query = "insert into user_roles (user_id, role_id) values ($1, $2)";
-            await postgresQlClient.query(query, [user_id, role]);
+            const sql = "insert into user_roles (user_id, role_id) values ($1, $2)";
+            await client.query(sql, [user_id, role]);
         });
+
+        await client.query('COMMIT');
 
         res.status(200).json({
             success: true,
@@ -204,7 +218,10 @@ async function assignRoleService(req,res,next){
         });
 
     } catch (error) {
+        await client.query('ROLLBACK');
         next(error);
+    } finally {
+        client.release();
     }
 
 }

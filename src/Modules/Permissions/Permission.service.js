@@ -1,7 +1,8 @@
-import { postgresQlClient } from "../../Configs/PostgresQl.js";
+import { postgresQlClient, query } from "../../Configs/PostgresQl.js";
 import createHttpError from "http-errors";
 import { makeSlug } from "../../Helpers/Helper.js";
 import { permissionSchema } from "./validation.js";
+
 
 async function indexService(req, res, next) {
 
@@ -12,8 +13,8 @@ async function indexService(req, res, next) {
         limit = parseInt(limit) || 10;
         const offset = (page - 1) * limit;
 
-        const query = "SELECT * FROM permissions LIMIT $1 OFFSET $2";
-        const permissions = await postgresQlClient.query(query, [limit, offset]);
+        const sql = "SELECT * FROM permissions LIMIT $1 OFFSET $2";
+        const permissions = await query(sql, [limit, offset]);
 
         res.status(200).json({
             success: true,
@@ -29,6 +30,7 @@ async function indexService(req, res, next) {
     }
 }
 
+
 async function storeService(req, res, next) {
 
     try {
@@ -40,8 +42,8 @@ async function storeService(req, res, next) {
         if (error) return next(createHttpError.BadRequest(error.message));
 
         const slug = await makeSlug(name, "permissions");
-        const query = "INSERT INTO permissions (name, description, slug) VALUES ($1, $2, $3) RETURNING *";
-        const permission = await postgresQlClient.query(query, [name, description, slug]);
+        const sql = "INSERT INTO permissions (name, description, slug) VALUES ($1, $2, $3) RETURNING *";
+        const permission = await query(sql, [name, description, slug]);
 
         res.status(201).json({
             success: true,
@@ -55,13 +57,14 @@ async function storeService(req, res, next) {
 
 }
 
+
 async function showService(req, res, next) {
 
     try {
 
         const { slug } = req.params;
-        const query = "SELECT * FROM permissions WHERE slug = $1";
-        const permission = await postgresQlClient.query(query, [slug]);
+        const sql = "SELECT * FROM permissions WHERE slug = $1";
+        const permission = await query(sql, [slug]);
 
         if (permission.rows.length === 0) {
             return next(createHttpError.NotFound("Permission not found"));
@@ -89,8 +92,8 @@ async function updateService(req, res, next) {
         const { error } = permissionSchema.validate(req.body);
         if (error) return next(createHttpError.BadRequest(error.message));
 
-        const query = "UPDATE permissions SET name = $1, description = $2 WHERE slug = $3 RETURNING *";
-        const permission = await postgresQlClient.query(query, [name, description, slug]);
+        const sql = "UPDATE permissions SET name = $1, description = $2 WHERE slug = $3 RETURNING *";
+        const permission = await query(sql, [name, description, slug]);
 
         if (permission.rows.length === 0) {
             return next(createHttpError.NotFound("Permission not found"));
@@ -114,8 +117,8 @@ async function destroyService(req, res, next) {
     try {
 
         const { slug } = req.params;
-        const query = "DELETE FROM permissions WHERE slug = $1";
-        const result = await postgresQlClient.query(query, [slug]);
+        const sql = "DELETE FROM permissions WHERE slug = $1";
+        const result = await query(sql, [slug]);
 
         if (result.rowCount === 0) {
             return next(createHttpError.NotFound("Permission not found"));
@@ -138,7 +141,7 @@ async function changeStatusService(req, res, next) {
     try {
 
         const { slug } = req.params;
-        const permission = await postgresQlClient.query("SELECT * FROM permissions WHERE slug = $1", [slug]);
+        const permission = await query("SELECT * FROM permissions WHERE slug = $1", [slug]);
 
         if (permission.rows.length === 0) {
             return next(createHttpError.NotFound("Permission not found"));
@@ -163,6 +166,8 @@ async function changeStatusService(req, res, next) {
 
 async function assignPermissionService(req, res, next) {
 
+    const client = await postgresQlClient();
+
     try {
 
         const { role_id, permissions } = req.body;
@@ -172,21 +177,25 @@ async function assignPermissionService(req, res, next) {
         if (permissions.length === 0) return next(createHttpError.BadRequest("Permissions array cannot be empty"));
 
         // Check if role exists
-        const role = await postgresQlClient.query("SELECT * FROM roles WHERE id = $1", [role_id]);
+        const role = await query("SELECT * FROM roles WHERE id = $1", [role_id]);
         if (role.rows.length === 0) {
             return next(createHttpError.NotFound("Role not found"));
         }
 
+        await client.query('BEGIN');
+
         // Remove all old permissions
-        await postgresQlClient.query("DELETE FROM role_permissions WHERE role_id = $1", [role_id]);
+        await client.query("DELETE FROM role_permissions WHERE role_id = $1", [role_id]);
 
         // Assign new permissions
         for (const permission_id of permissions) {
-            await postgresQlClient.query(
+            await client.query(
                 "INSERT INTO role_permission (role_id, permission_id) VALUES ($1, $2)",
                 [role_id, permission_id]
             );
         }
+
+        await client.query('COMMIT');
 
         res.status(200).json({
             success: true,

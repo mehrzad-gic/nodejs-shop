@@ -1,4 +1,4 @@
-import { postgresQlClient } from "../../config/postgres.js";
+import { query } from "../../Configs/PostgresQl.js";
 import { tagValidation } from "./validation.js";
 import createHttpError from "http-errors";
 import { makeSlug } from "../../Helpers/Helper.js";
@@ -14,11 +14,9 @@ export const indexService = async (req, res, next) => {
         status = parseInt(status) || 1;
         const offset = (page - 1) * limit;
 
-        const query = "select * from tags where slug like '%$1%' and status = $2 limit $3 offset $4";
-        const result = await postgresQlClient.query(query, [search, status, limit, offset]);
+        const sql = "select * from tags where slug like '%$1%' and status = $2 limit $3 offset $4";
+        const result = await query(sql, [search, status, limit, offset]);
         
-        const tags = await postgresQlClient.query("select * from tags");
-
         res.status(200).json({
             data: result.rows,
             pagination: {
@@ -46,8 +44,10 @@ export const storeService = async (req, res, next) => {
 
         const slug = await makeSlug(name,"tags");
 
-        const query = "insert into tags (name,slug,description,translations) values ($1, $2, $3, $4) returning *";
-        const result = await postgresQlClient.query(query, [name, slug, description,translations]);
+        const sql = "insert into tags (name,slug,description,translations) values ($1, $2, $3, $4) returning *";
+        const result = await query(sql, [name, slug, description,translations]);
+
+        if(!result.rows[0]) next(createHttpError.BadRequest("Tag not created"));
 
         res.status(200).json({
             data: result.rows[0],
@@ -67,8 +67,8 @@ export const showService = async (req, res, next) => {
 
         const { slug } = req.params;
 
-        const query = "select * from tags where slug = $1";
-        const result = await postgresQlClient.query(query, [slug]);
+        const sql = "select * from tags where slug = $1";
+        const result = await query(sql, [slug]);
 
         if(!result.rows[0]) next(createHttpError.NotFound("Tag not found"));
 
@@ -93,13 +93,15 @@ export const updateService = async (req, res, next) => {
         const { error } = tagValidation.validate(req.body);
         if(error) next(createHttpError.BadRequest(error.message));
 
-        const tag = await postgresQlClient.query("select * from tags where slug = $1", [slug]);
+        const tag = await query("select * from tags where slug = $1", [slug]);
         if(!tag.rows[0]) next(createHttpError.NotFound("Tag not found"));
 
         const { name, translations, description } = req.body;
 
-        const query = "update tags set name = $1, description = $2, translations = $3 where slug = $4 returning *";
-        const result = await postgresQlClient.query(query, [name, description, translations, slug]);
+        const sql = "update tags set name = $1, description = $2, translations = $3 where slug = $4 returning *";
+        const result = await query(sql, [name, description, translations, slug]);
+
+        if(!result.rows[0]) next(createHttpError.BadRequest("Tag not updated"));
 
         res.status(200).json({
             data: result.rows[0],
@@ -119,11 +121,11 @@ export const destroyService = async (req, res, next) => {
 
         const { slug } = req.params;
 
-        const tag = await postgresQlClient.query("select * from tags where slug = $1", [slug]);
+        const tag = await query("select * from tags where slug = $1", [slug]);
         if(!tag.rows[0]) next(createHttpError.NotFound("Tag not found"));
 
-        const query = "delete from tags where slug = $1";
-        await postgresQlClient.query(query, [slug]);
+        const sql = "delete from tags where slug = $1";
+        await query(sql, [slug]);
 
         res.status(200).json({
             success: true,
@@ -142,11 +144,11 @@ export const changeStatusService = async (req, res, next) => {
 
         const { slug } = req.params;
 
-        const tag = await postgresQlClient.query("select * from tags where slug = $1", [slug]);
+        const tag = await query("select * from tags where slug = $1", [slug]);
         if(!tag.rows[0]) next(createHttpError.NotFound("Tag not found"));
 
-        const query = "update tags set status = $1 where slug = $2";
-        await postgresQlClient.query(query, [tag.rows[0].status === 1 ? 0 : 1, slug]);
+        const sql = "update tags set status = $1 where slug = $2";
+        await query(sql, [tag.rows[0].status === 1 ? 0 : 1, slug]);
 
         res.status(200).json({
             success: true,

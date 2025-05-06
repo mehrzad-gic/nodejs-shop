@@ -1,4 +1,4 @@
-import { postgresQlClient } from "../../Configs/PostgresQl.js";
+import { postgresQlClient, query } from "../../Configs/PostgresQl.js";
 import createHttpError from "http-errors";
 import { makeSlug, checkExistByField, makeHashPassword } from "../../Helpers/Helper.js";
 import { userSchema } from "./validation.js";
@@ -18,8 +18,8 @@ async function indexService(req, res, next){
         status = status || "";
         const offset = (page - 1) * limit;
 
-        const query = "select * from users where email like '%' || $1 || '%' and status = $2 limit $3 offset $4";
-        const users = await postgresQlClient.query(query, [email, status, limit, offset]);
+        const sql = "select * from users where email like '%' || $1 || '%' and status = $2 limit $3 offset $4";
+        const users = await query(sql, [email, status, limit, offset]);
 
         res.status(200).json({
             success: true,
@@ -55,8 +55,8 @@ async function storeService(req, res, next){
         const slug = makeSlug(name);
         const hashedPassword = await makeHashPassword(password);
 
-        const query = "insert into users (email, password, name, phone, slug) values ($1, $2, $3, $4, $5) returning *";
-        const user = await postgresQlClient.query(query, [email, hashedPassword, name, phone, slug]);
+        const sql = "insert into users (email, password, name, phone, slug) values ($1, $2, $3, $4, $5) returning *";
+        const user = await query(sql, [email, hashedPassword, name, phone, slug]);
 
         res.status(201).json({
             success: true,
@@ -80,8 +80,8 @@ async function showService(req, res, next){
         if(!existUser) next(createHttpError.NotFound("User not found"));
 
         // user with roles
-        const query = "select u.*, r.name as role_name from users u left join roles r on u.role_id = r.id where u.slug = $1";
-        const user = await postgresQlClient.query(query, [slug]);
+        const sql = "select u.*, r.name as role_name from users u left join roles r on u.role_id = r.id where u.slug = $1";
+        const user = await query(sql, [slug]);
 
         res.status(200).json({
             success: true,
@@ -128,8 +128,8 @@ async function updateService(req, res, next){
 
         }
 
-        const query = "update users set email = $1, name = $2, phone = $3 where slug = $4 returning *";  
-        const user = await postgresQlClient.query(query, [email, name, phone, slug]);
+        const sql = "update users set email = $1, name = $2, phone = $3 where slug = $4 returning *";  
+        const user = await query(sql, [email, name, phone, slug]);
 
         res.status(200).json({
             success: true,
@@ -152,8 +152,8 @@ async function destroyService(req, res, next){
         const existUser = await checkExistByField("slug", slug, "users");
         if(!existUser) next(createHttpError.NotFound("User not found"));
 
-        const query = "delete from users where slug = $1";
-        await postgresQlClient.query(query, [slug]);
+        const sql = "delete from users where slug = $1";
+        await query(sql, [slug]);
 
         if(existUser.image){
             await UploadQueue.add('deleteFile', {
@@ -183,8 +183,8 @@ async function changeStatusService(req, res, next){
 
         const status = existUser.status === 1 ? 0 : 1;
 
-        const query = "update users set status = $1 where slug = $2";
-        await postgresQlClient.query(query, [status, slug]);
+        const sql = "update users set status = $1 where slug = $2";
+        await query(sql, [status, slug]);
 
         res.status(200).json({
             success: true,

@@ -16,8 +16,8 @@ export const indexService = async (req, res, next) => {
         status = parseInt(status) || 1;
         const offset = (page - 1) * limit;
 
-        const query = "select * from categories where slug like '%$1%' and status = $2 limit $3 offset $4";
-        const result = await postgresQlClient.query(query, [search, status, limit, offset]);
+        const sql = "select * from categories where slug like '%$1%' and status = $2 limit $3 offset $4";
+        const result = await query(sql, [search, status, limit, offset]);
         
         res.status(200).json({
             data: result.rows,
