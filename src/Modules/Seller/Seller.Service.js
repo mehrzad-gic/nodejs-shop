@@ -1,6 +1,6 @@
 import { postgresQlClient, query } from "../../Configs/PostgresQl.js";
 import createHttpError from "http-errors";
-import { sellerValidation } from "./validation.js";
+import { sellerValidation, registerValidation } from "./validation.js";
 import { makeSlug } from "../../Helpers/Helper.js";
 import uploadQueue from "../../Queues/UpoladQueue.js";
 
@@ -41,7 +41,7 @@ async function storeService(req, res, next){
     
     try {
 
-        const { name, username, latitude, longitude, address, description } = req.body;
+        const { name, username, description } = req.body;
 
         // validate request body
         const {error} = sellerValidation.validate(req.body);
@@ -55,9 +55,11 @@ async function storeService(req, res, next){
         const seller = await query("select * from sellers where user_id = $1", [user.rows[0].id]);
         if(seller.rows[0]) next(createHttpError.BadRequest("Seller already exists"));
         
+        const slug = await makeSlug(name, "sellers");
+
         // create seller
-        const sql = "insert into sellers (name, user_id, coordinates, address, description) values ($1, $2, ST_SetSRID(ST_MakePoint($3, $4), 4326), $5, $6) returning *";
-        const result = await query(sql, [name, user.rows[0].id, longitude, latitude, address, description]);
+        const sql = "insert into sellers (name, user_id, description, slug) values ($1, $2, $3, $4) returning *";
+        const result = await query(sql, [name, user.rows[0].id, description, slug]);
 
         if(!result.rows[0]) next(createHttpError.BadRequest("Seller not created"));
 
@@ -280,18 +282,20 @@ async function registerService(req, res, next){
         const user = req.user;
 
         // request body
-        const { name, latitude, longitude, address, description } = req.body;
+        const { name, description } = req.body;
 
         // validate request body
-        const {error} = sellerValidation.validate(req.body);
+        const {error} = registerValidation.validate(req.body);
         if(error) next(createHttpError.BadRequest(error[0].message));
 
         const seller = await query("select * from sellers where user_id = $1", [user.id]);
         if(seller.rows[0]) next(createHttpError.BadRequest("Seller already exists"));
-        
+
+        const slug = await makeSlug(name, "sellers");
+
         // create seller
-        const sql = "insert into sellers (name, user_id, coordinates, address, description) values ($1, $2, ST_SetSRID(ST_MakePoint($3, $4), 4326), $5, $6) returning *";
-        const result = await query(sql, [name, user.id, longitude, latitude, address, description]);
+        const sql = "insert into sellers (name, user_id, description, slug) values ($1, $2, $3, $4) returning *";
+        const result = await query(sql, [name, user.id, description, slug]);
 
         res.status(201).json({
             data: result.rows[0],

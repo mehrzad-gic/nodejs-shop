@@ -43,8 +43,8 @@ async function storeService(req, res, next){
         const {error} = userAddressValidation.validate(req.body);
         if(error) next(createHttpError.BadRequest(error[0].message));
 
-        const sql = "insert into user_addresses (user_id, address, city_id, floor, street, coordinates, postal_code) values ($1, $2, $3, $4, $5, ST_SetSRID(ST_MakePoint($6, $7), 4326), $8) returning *";
-        const result = await query(sql, [user.id, address, city_id, floor, street, longitude, latitude, postal_code]);
+        const sql = "insert into user_addresses (user_id, address, city_id, floor, street, longitude, latitude, coordinates, postal_code) values ($1, $2, $3, $4, $5, $6, $7, ST_SetSRID(ST_MakePoint($8, $9), 4326), $10) returning *";
+        const result = await query(sql, [user.id, address, city_id, floor, street, longitude, latitude, longitude, latitude, postal_code]);
         
         res.status(201).json({
             data: result.rows[0],
@@ -78,8 +78,8 @@ async function updateService(req, res, next){
         if(error) next(createHttpError.BadRequest(error[0].message));
 
         // update user address
-        const sql = "update user_addresses set address = $1, city_id = $2, floor = $3, street = $4, coordinates = ST_SetSRID(ST_MakePoint($5, $6), 4326), postal_code = $7 where id = $8 and user_id = $9 returning *";
-        const result = await query(sql, [address, city_id, floor, street, latitude, longitude, postal_code, id, user.id]);
+        const sql = "update user_addresses set address = $1, city_id = $2, floor = $3, street = $4, longitude = $5, latitude = $6, coordinates = ST_SetSRID(ST_MakePoint($7, $8), 4326), postal_code = $9 where id = $10 and user_id = $11 returning *";
+        const result = await query(sql, [address, city_id, floor, street, longitude, latitude, longitude, latitude, postal_code, id, user.id]);
 
         res.status(200).json({
             data: result.rows[0],
