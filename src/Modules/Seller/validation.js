@@ -1,5 +1,11 @@
 import Joi from "joi";
 
+// enums
+const status = {
+    ACTIVE: "active",
+    BLOCKED: "blocked",
+    PENDING: "pending",
+}
 
 const sellerValidation = Joi.object({
     name: Joi.string().required(),
@@ -15,11 +21,5 @@ const registerValidation = Joi.object({
 });
 
 
-// enums
-const status = {
-    ACTIVE: "active",
-    BLOCKED: "blocked",
-    PENDING: "pending",
-}
 
-export { sellerValidation, status };
+export { sellerValidation, status, registerValidation };

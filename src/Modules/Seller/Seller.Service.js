@@ -3,7 +3,7 @@ import createHttpError from "http-errors";
 import { sellerValidation, registerValidation } from "./validation.js";
 import { makeSlug } from "../../Helpers/Helper.js";
 import uploadQueue from "../../Queues/UpoladQueue.js";
-
+import { status as statusType } from "./validation.js";
 
 async function indexService(req, res, next){
  
@@ -58,8 +58,8 @@ async function storeService(req, res, next){
         const slug = await makeSlug(name, "sellers");
 
         // create seller
-        const sql = "insert into sellers (name, user_id, description, slug) values ($1, $2, $3, $4) returning *";
-        const result = await query(sql, [name, user.rows[0].id, description, slug]);
+        const sql = "insert into sellers (name, user_id, description, slug, status) values ($1, $2, $3, $4, $5) returning *";
+        const result = await query(sql, [name, user.rows[0].id, description, slug, statusType.PENDING]);
 
         if(!result.rows[0]) next(createHttpError.BadRequest("Seller not created"));
 
@@ -294,8 +294,8 @@ async function registerService(req, res, next){
         const slug = await makeSlug(name, "sellers");
 
         // create seller
-        const sql = "insert into sellers (name, user_id, description, slug) values ($1, $2, $3, $4) returning *";
-        const result = await query(sql, [name, user.id, description, slug]);
+        const sql = "insert into sellers (name, user_id, description, slug, status) values ($1, $2, $3, $4, $5) returning *";
+        const result = await query(sql, [name, user.id, description, slug, statusType.PENDING]);
 
         res.status(201).json({
             data: result.rows[0],
