@@ -7,18 +7,16 @@ export const indexService = async (req, res, next) => {
     try {
      
         let { page, limit, search, status } = req.query;
-
         page = parseInt(page);
         limit = parseInt(limit);
-        search = search || '';
-        status = status || '';
-
+        search = search.trim().toLowerCase() || '';
+        status = parseInt(status) || 1;
         const offset = (page - 1) * limit;
 
         const sql = `
             SELECT * FROM countries
             WHERE 1=1
-            ${search ? `AND name ILIKE '%${search}%'` : ''}
+            ${search ? `AND name LIKE '%${search}%'` : ''}
             ${status ? `AND status = '${status}'` : ''}
             LIMIT $1 OFFSET $2
         `;

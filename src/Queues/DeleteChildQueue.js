@@ -1,11 +1,11 @@
 import Queue from 'bull';
 import redisClient from "../Configs/Redis.js";
-import DeleteChildJob from "../Jobs/DeleteChild.Job.js";
+import DeleteChildJob from "../Jobs/DeleteChildJob.js";
 import logger from '../Helpers/Logger.js';
 
 const deleteChildQueue = new Queue("deleteChild", redisClient);
 
-deleteChildQueue.process(DeleteChildJob);
+deleteChildQueue.process('deleteChild', DeleteChildJob);
 
 deleteChildQueue.on("completed", (jobId, result) => {
     logger.info(`Job ${jobId} completed successfully with result: ${result}`);

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { index, store, show, update, destroy, changeStatus } from "./Province.Controller";
+import { index, store, show, update, destroy, changeStatus } from "./Province.Controller.js";
 const router = Router();
 
 router.get("/", index);

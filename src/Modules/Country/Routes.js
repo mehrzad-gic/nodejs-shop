@@ -1,12 +1,12 @@
 import { Router } from "express";
-import { indexService, storeService, showService, updateService, destroyService, changeStatusService } from "./Country.Service";
+import { index, store, show, update, destroy, changeStatus } from "./Country.Controller.js";
 const router = Router();
 
-router.get("/", indexService);
-router.post("/create", storeService);
-router.get("/show/:id", showService);
-router.put("/update/:id", updateService);
-router.delete("/delete/:id", destroyService);
-router.put("/change-status/:id", changeStatusService);
+router.get("/", index);
+router.post("/create", store);
+router.get("/show/:id", show);
+router.put("/update/:id", update);
+router.delete("/delete/:id", destroy);
+router.put("/change-status/:id", changeStatus);
 
 export default router;

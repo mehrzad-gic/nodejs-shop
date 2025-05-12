@@ -12,11 +12,11 @@ export const indexService = async (req, res, next) => {
         let { page, limit, search, status } = req.query;
         page = parseInt(page);
         limit = parseInt(limit);
-        search = search.toLowerCase() || "";
+        search = search.trim().toLowerCase() || "";
         status = parseInt(status) || 1;
         const offset = (page - 1) * limit;
 
-        const sql = "select * from posts where status = $1 and slug ilike $2 limit $3 offset $4";
+        const sql = "select * from posts where status = $1 and slug LIKE $2 limit $3 offset $4";
         const result = await query(sql, [status, `%${search}%`, limit, offset]);
 
         res.status(200).json({

@@ -1,7 +1,7 @@
 
 import createHttpError from "http-errors";
-import {query} from "../Configs/PostgresQl"
-import { logError } from "../Helpers/Helper";
+import  { query } from "../Configs/PostgresQl.js";
+import { logError } from "../Helpers/Helper.js";
 
 const DeleteChildJob = async (job) => {
 

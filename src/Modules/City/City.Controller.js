@@ -1,4 +1,4 @@
-import { indexService, storeService, showService, updateService, destroyService, changeStatusService } from "./Province.Service.js";
+import { indexService, storeService, showService, updateService, destroyService, changeStatusService } from "./City.Service.js";
 
 const index = (req, res, next) => indexService(req, res, next);
 
