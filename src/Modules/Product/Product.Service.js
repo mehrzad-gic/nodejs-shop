@@ -45,7 +45,7 @@ export const storeService = async (req, res, next) => {
         const { error } = productValidation.validate(req.body);
         if (error) next(createHttpError.BadRequest(error.message));
         
-        const { name, description, maximum_discount, status, category_id, brand_id } = req.body;
+        const { name, description, maximum_discount, status, category_id, brand_id, countries } = req.body;
         
         const brand = await query("select * from brands where id = $1", [brand_id]);
         if (!brand.rows[0]) next(createHttpError.NotFound("Brand not found"));
@@ -79,8 +79,19 @@ export const storeService = async (req, res, next) => {
             });
         }
 
+        await query("begin");
+
         const sql = "insert into products (name, description, maximum_discount, status, category_id, brand_id, slug) values ($1, $2, $3, $4, $5, $6, $7) returning *";
         const result = await query(sql, [name, description, maximum_discount, status, category_id, brand_id, slug]);
+
+        // insert product countries
+        for(const country of countries){
+            const country_check = await query("select * from countries where id = $1", [country]);
+            if(!country_check.rows[0]) next(createHttpError.NotFound("Country not found"));
+            await query("insert into product_countries (product_id, country_id) values ($1, $2)", [result.rows[0].id, country]);
+        }
+
+        await query("commit");
 
         res.status(201).json({
             message: "Product created successfully",
@@ -90,6 +101,7 @@ export const storeService = async (req, res, next) => {
         })
         
     } catch (error) {
+        await query("rollback");
         next(error)
     }
 
@@ -126,20 +138,32 @@ export const updateService = async (req, res, next) => {
     try {
      
         const { slug } = req.params;
-
+        const { name, description, maximum_discount, status, category_id, brand_id, countries } = req.body;
+        // check if product exists
         const product = await query("select * from products where slug = $1", [slug]);
         if (!product.rows[0]) next(createHttpError.NotFound("Product not found"));
-
-        const { name, description, maximum_discount, status, category_id, brand_id } = req.body;
-        
+        // check if brand exists
         const brand = await query("select * from brands where id = $1", [brand_id]);
         if (!brand.rows[0]) next(createHttpError.NotFound("Brand not found"));
-
+        // check if category exists
         const category = await query("select * from categories where id = $1", [category_id]);
         if (!category.rows[0]) next(createHttpError.NotFound("Category not found"));
         
+        await query("begin");
+
+        // update product
         const sql = "update products set name = $1, description = $2, maximum_discount = $3, status = $4, category_id = $5, brand_id = $6 where slug = $7";
         const result = await query(sql, [name, description, maximum_discount, status, category_id, brand_id, slug]);
+
+        // insert product countries
+        if(product.rows[0].countries) await query("delete from product_countries where product_id = $1", [product.rows[0].id]);
+        for(const country of countries){
+            const country_check = await query("select * from countries where id = $1", [country]);
+            if(!country_check.rows[0]) next(createHttpError.NotFound("Country not found"));
+            await query("insert into product_countries (product_id, country_id) values ($1, $2)", [product.rows[0].id, country]);
+        }
+
+        await query("commit");
 
         if(req.files && req.files.length > 0 && req.files.image){
             await uploadQueue.add("uploadFile", {
@@ -174,13 +198,16 @@ export const updateService = async (req, res, next) => {
                 });
             }
         }
+
         res.status(200).json({
             message: "Product updated successfully",
             status: true,
             success: true,
             data: result.rows[0]
         })
+
     } catch (error) {
+        await query("rollback");
         next(error)
     }
 
