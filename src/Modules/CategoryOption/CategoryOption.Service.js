@@ -3,16 +3,16 @@ import createHttpError from "http-errors";
 import { categoryOptionValidation } from "./validation.js";
 
 
-async function indexService(req, res, next){
- 
+async function indexService(req, res, next) {
+
     try {
-     
+
         const { slug } = req.params;
 
         // check if category exists
         const category_check = await query("select * from categories where slug = $1", [slug]);
-        if(!category_check.rows[0]) next(createHttpError.NotFound("Category not found"));
-        
+        if (!category_check.rows[0]) next(createHttpError.NotFound("Category not found"));
+
         // get category options
         const category_options_check = await query("select * from category_options where category_id = $1", [category_check.rows[0].id]);
 
@@ -21,28 +21,28 @@ async function indexService(req, res, next){
             success: true,
             message: "Category options fetched successfully"
         })
-        
+
     } catch (error) {
         next(error);
     }
-    
+
 }
 
 
-async function storeService(req, res, next){
+async function storeService(req, res, next) {
 
     try {
-    
+
         const { slug } = req.params;
         const { key, value, status } = req.body;
 
         // check if category exists
         const category_check = await query("select * from categories where slug = $1", [slug]);
-        if(!category_check.rows[0]) next(createHttpError.NotFound("Category not found"));
-        
+        if (!category_check.rows[0]) next(createHttpError.NotFound("Category not found"));
+
         // validate request body
         const { error } = categoryOptionValidation.validate(req.body);
-        if(error) next(createHttpError.BadRequest(error.message));
+        if (error) next(createHttpError.BadRequest(error.message));
 
         // create category option
         const category_option = await query("insert into category_options (key, value, status, category_id) values ($1, $2, $3, $4) returning *", [key, value, status, category_check.rows[0].id]);
@@ -52,8 +52,8 @@ async function storeService(req, res, next){
             success: true,
             message: "Category option created successfully"
         })
-        
-        
+
+
     } catch (error) {
         next(error);
     }
@@ -61,22 +61,22 @@ async function storeService(req, res, next){
 }
 
 
-async function showService(req, res, next){
+async function showService(req, res, next) {
 
     try {
- 
+
         const { id } = req.params;
 
         // check if category option exists
         const category_option_check = await query("select * from category_options where id = $1", [id]);
-        if(!category_option_check.rows[0]) next(createHttpError.NotFound("Category option not found"));
-        
+        if (!category_option_check.rows[0]) next(createHttpError.NotFound("Category option not found"));
+
         res.status(200).json({
             data: category_option_check.rows[0],
             success: true,
             message: "Category option fetched successfully"
         })
-        
+
     } catch (error) {
         next(error);
     }
@@ -84,7 +84,7 @@ async function showService(req, res, next){
 }
 
 
-async function updateService(req, res, next){
+async function updateService(req, res, next) {
 
     try {
 
@@ -92,15 +92,15 @@ async function updateService(req, res, next){
 
         // check if category option exists
         const category_option_check = await query("select * from category_options where id = $1", [id]);
-        if(!category_option_check.rows[0]) next(createHttpError.NotFound("Category option not found"));
-        
+        if (!category_option_check.rows[0]) next(createHttpError.NotFound("Category option not found"));
+
         // validate request body
         const { error } = categoryOptionValidation.validate(req.body);
-        if(error) next(createHttpError.BadRequest(error.message));
+        if (error) next(createHttpError.BadRequest(error.message));
 
         // update category option
         const category_option = await query("update category_options set status = $1, key = $2, value = $3 where id = $4 returning *", [req.body.status, req.body.key, req.body.value, id]);
-        
+
         res.status(200).json({
             data: category_option.rows[0],
             success: true,
@@ -114,16 +114,16 @@ async function updateService(req, res, next){
 }
 
 
-async function destroyService(req, res, next){
+async function destroyService(req, res, next) {
 
     try {
- 
+
         const { id } = req.params;
 
         // check if category option exists
         const category_option_check = await query("select * from category_options where id = $1", [id]);
-        if(!category_option_check.rows[0]) next(createHttpError.NotFound("Category option not found"));
-        
+        if (!category_option_check.rows[0]) next(createHttpError.NotFound("Category option not found"));
+
         // delete category option
         await query("delete from category_options where id = $1", [id]);
 
@@ -139,7 +139,7 @@ async function destroyService(req, res, next){
 }
 
 
-async function changeStatusService(req, res, next){
+async function changeStatusService(req, res, next) {
 
     try {
 
@@ -147,8 +147,8 @@ async function changeStatusService(req, res, next){
 
         // check if category option exists
         const category_option_check = await query("select * from category_options where id = $1", [id]);
-        if(!category_option_check.rows[0]) next(createHttpError.NotFound("Category option not found"));
-        
+        if (!category_option_check.rows[0]) next(createHttpError.NotFound("Category option not found"));
+
         // update category option status
         const category_option = await query("update category_options set status = $1 where id = $2 returning *", [category_option_check.rows[0].status === 1 ? 0 : 1, id]);
 
@@ -157,13 +157,55 @@ async function changeStatusService(req, res, next){
             success: true,
             message: "Category option status updated successfully"
         })
-        
-        
+
+
     } catch (error) {
         next(error);
     }
 
 }
 
+
+async function getProductOptionsService(req, res, next) {
+
+    try {
+
+        const { slug } = req.params;
+
+        // check if product exists
+        const product_check = await query("select * from products where slug = $1", [slug]);
+        if (!product_check.rows[0]) next(createHttpError.NotFound("Product not found"));
+
+        // get product options
+        const sql = `
+            SELECT 
+                co.*,
+                json_agg(
+                    json_build_object(
+                        'id', cov.id,
+                        'name', cov.name,
+                        'option_id', cov.category_option_id
+                    )
+                ) AS option_values
+            FROM category_options co 
+            LEFT JOIN category_option_values cov ON cov.category_option_id = co.id
+            WHERE co.category_id = $1
+            GROUP BY co.id;
+        `;
+
+        const optionAndVAlue = await query(sql, [product_check.rows[0].category_id]);
+
+        res.status(200).json({
+            data: optionAndVAlue.rows,
+            success: true,
+            message: "Product options fetched successfully"
+        })
+
+
+    } catch (error) {
+        next(error);
+    }
+
+}
 
 export { indexService, storeService, showService, updateService, destroyService, changeStatusService };
