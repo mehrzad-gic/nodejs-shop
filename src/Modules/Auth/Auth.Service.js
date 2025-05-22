@@ -93,6 +93,7 @@ async function loginService(req, res, next) {
 
 }
 
+//! @post /auth/verify-otp
 async function verifyOtpService(req, res, next) {
 
     try {
