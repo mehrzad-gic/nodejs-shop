@@ -157,21 +157,29 @@ async function verifyOtpService(req, res, next) {
 // helper functions
 function checkInput(input) {
 
-    // Regex for email validation (supports most common formats)
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (typeof input !== 'string' || input.trim() === '') {
+        return false;
+    }
     
-    // Regex for phone validation (supports international formats)
-    const phoneRegex = /^(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/;
+    // Trim input for validation
+    const trimmedInput = input.trim();
     
-    if (emailRegex.test(input)) {
+    // More comprehensive email regex
+    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+    
+    // More strict phone regex (adjust based on your needs)
+    const phoneRegex = /^\+?[\d\s\-\(\)]{6,}$/;
+    
+    if (emailRegex.test(trimmedInput)) {
         return "email";
-    } else if (phoneRegex.test(input)) {
+    } else if (phoneRegex.test(trimmedInput) && trimmedInput.replace(/\D/g, '').length >= 6) {
         return "phone";
     } else {
         return false;
     }
 
 }
+
 
 function createOtp(){
 

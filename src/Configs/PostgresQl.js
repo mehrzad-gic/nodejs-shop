@@ -1,20 +1,26 @@
 import { Pool } from 'pg';
 import Logger from '../Helpers/Logger.js';
 import dotenv from 'dotenv';
+import { log } from 'console';
 dotenv.config()
 
+const { DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME } = process.env;
+
 const pool = new Pool({
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    database: process.env.DB_NAME,
+    user: DB_USER,
+    password: DB_PASSWORD,
+    host: DB_HOST,
+    port: DB_PORT,
+    database: DB_NAME,
     max: 20, // Max connections (default: 10)
     idleTimeoutMillis: 30000, // Close idle connections after 30s
     connectionTimeoutMillis: 2000, // Fail fast if can't connect
 });
 
-
+// Test connection on startup
+pool.query('SELECT NOW()')
+  .then(res => console.log('Database connected at:', res.rows[0].now))
+  .catch(err => console.error('Connection failed:', err));
 export async function query(sql, params, extra = true) {
 
     const client = await pool.connect();
