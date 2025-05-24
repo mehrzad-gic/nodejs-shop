@@ -8,88 +8,88 @@ import jwt from "jsonwebtoken";
 // services
 async function loginService(req, res, next) {
 
+
+    // validation
+    const { input } = req.body;
+    const inputType = checkInput(input);
+    if(inputType == false) throw new createHttpError.BadRequest('Input must be a phone number or email')
+    
+    const client = await postgresQlClient();
+
     try {
 
-        // validation
-        const { input } = req.body;
-        const inputType = checkInput(input);
-        if(inputType == false) throw new createHttpError.BadRequest('Input must be a phone number or email')
-        
-        const client = await postgresQlClient();
+        const user = await client.query(`SELECT id FROM users WHERE ${inputType}=$1`,[input]);
 
-        try {
+        if(user && user.rows.length > 0){
 
-            const user = await client.query(`SELECT id FROM users WHERE ${inputType}=$1`,[input]);
-
-            if(user){
-
-                // check user status
-                if(user.rows.length > 0 &&user.rows[0].status == 0) throw new createHttpError.BadRequest('user is baned');
+            // check user status
+            if(user.rows.length > 0 &&user.rows[0].status == 0) throw new createHttpError.BadRequest('user is baned');
+            
+            // check if user otp is not expired
+            const otp = await client.query("select * from otp where user_id=$1",[user.rows[0].id]);
+            if(otp.rows?.length > 0){
+                console.log("otp", otp.rows[0]);
+                console.log("date", new Date());
                 
-                // check if user otp is not expired
-                const otp = await client.query("select * from otp where user_id=$1",[user.rows[0].id]);
-                if(otp.rows.length > 0){
-                    if(otp.rows[0].expire_in < new Date()) next(new createHttpError.BadRequest('otp is not expired yet'));
-                }
-
-                // create otp
-                const { otpCode, otpExpireIn } = createOtp();
-                await client.query("insert into otp (user_id, code, expire_in) values ($1, $2, $3)",[user.rows[0].id, otpCode, otpExpireIn]);
-                
-                // send otp to user
-                await emailQueue.add('sendEmail',{
-                    to: user.rows[0].email,
-                    subject: 'OTP',
-                    text: `Your OTP is ${otpCode}`
-                });
-
-                // delete old otp if exist
-                if(otp.rows.length > 0) await client.query("delete from otp where user_id=$1",[user.rows[0].id]);
-
-                res.status(200).json({
-                    message: 'OTP sent to user',
-                    data: {
-                        otp: otpCode
-                    }
-                });
-
-            } else {
-
-                // create account
-                const user = await client.query("insert into users (email, ip) values ($1, $2) returning id",[input, req.ip]);
-
-                // create otp
-                const { otpCode, otpExpireIn } = createOtp();
-                await client.query("insert into otp (user_id, code, expire_in) values ($1, $2, $3)",[user.rows[0].id, otpCode, otpExpireIn]);
-
-                // send otp to user
-                await emailQueue.add('sendEmail',{
-                    to: input,
-                    subject: 'OTP',
-                    text: `Your OTP is ${otpCode}`
-                });
-
-                res.status(200).json({
-                    message: 'Account created',
-                    data: {
-                        email: input
-                    },
-                    success: true
-                });
+                const isOtpExpired = otp.rows[0].expire_in < new Date();
+                if(isOtpExpired) next(new createHttpError.BadRequest('otp is expired'));
 
             }
+            
+            // delete old otp if exist
+            if(otp.rows.length > 0) await client.query("delete from otp where user_id=$1",[user.rows[0].id]);
 
-        } catch(e){
-            logError(e)
-            next(e)
-        } finally {
-            client.release()
+            // create otp
+            const { otpCode, otpExpireIn } = createOtp();
+            await client.query("insert into otp (user_id, code, expire_in) values ($1, $2, $3)",[user.rows[0].id, otpCode, otpExpireIn]);
+            
+            // send otp to user
+            await emailQueue.add('sendEmail',{
+                to: user.rows[0].email,
+                subject: 'OTP',
+                text: `Your OTP is ${otpCode}`
+            });
+
+            res.status(200).json({
+                message: 'OTP sent to user',
+                data: {
+                    otp: otpCode
+                }
+            });
+
+        } else {
+
+            // create account
+            const user = await client.query("insert into users (email, ip) values ($1, $2) returning id",[input, req.ip]);
+
+            // create otp
+            const { otpCode, otpExpireIn } = createOtp();
+            await client.query("insert into otp (user_id, code, expire_in) values ($1, $2, $3)",[user.rows[0].id, otpCode, otpExpireIn]);
+
+            // send otp to user
+            await emailQueue.add('sendEmail',{
+                to: input,
+                subject: 'OTP',
+                text: `Your OTP is ${otpCode}`
+            });
+
+            res.status(200).json({
+                message: 'Account created',
+                data: {
+                    email: input
+                },
+                success: true
+            });
+
         }
-        
 
-    } catch (e) {
+    } catch(e){
+        logError(e)
         next(e)
+    } finally {
+        client.release()
     }
+        
 
 }
 

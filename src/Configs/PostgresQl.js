@@ -17,10 +17,7 @@ const pool = new Pool({
     connectionTimeoutMillis: 2000, // Fail fast if can't connect
 });
 
-// Test connection on startup
-pool.query('SELECT NOW()')
-  .then(res => console.log('Database connected at:', res.rows[0].now))
-  .catch(err => console.error('Connection failed:', err));
+
 export async function query(sql, params, extra = true) {
 
     const client = await pool.connect();

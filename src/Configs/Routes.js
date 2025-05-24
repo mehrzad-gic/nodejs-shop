@@ -2,7 +2,7 @@ import express from 'express';
 import Logger from '../Helpers/Logger.js';
 import authRoutes from '../Modules/Auth/Routes.js';
 import redisClient from './Redis.js';
-import { postgresQlClient } from './PostgresQl.js';
+import { query } from './PostgresQl.js';
 import { logError } from '../Helpers/Helper.js';
 
 
@@ -31,16 +31,8 @@ function Routes(app) {
 
     try {
 
-      // Get pagination parameters from query (e.g., /test-pg?page=1&limit=100)
-      const page = parseInt(req.query.page) || 1;
-      const limit = parseInt(req.query.limit) || 20;
-      const offset = (page - 1) * limit;
-
-      const client = await postgresQlClient();
-      const {rows} = await client.query('SELECT id FROM tags ORDER BY id LIMIT $1 OFFSET $2', [limit, offset],);
-      client.release();
-
-      res.json(rows);
+      const result = await query('SELECT NOW() AS current_time');
+      res.json({ message: 'PostgreSQL test successful', data: result, status: 'success3442',test: 'test' });
 
     } catch (e) {
       logError(e);
