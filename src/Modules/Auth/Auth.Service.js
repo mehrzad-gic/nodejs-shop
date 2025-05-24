@@ -4,10 +4,8 @@ import { logError } from "../../Helpers/Helper.js";
 import emailQueue from "../../Queues/EmailQueue.js";
 import jwt from "jsonwebtoken";
 
-
-// services
+//! @post /auth/login
 async function loginService(req, res, next) {
-
 
     // validation
     const { input } = req.body;
@@ -27,15 +25,14 @@ async function loginService(req, res, next) {
             
             // check if user otp is not expired
             const otp = await client.query("select * from otp where user_id=$1",[user.rows[0].id]);
-            if(otp.rows?.length > 0){
-                console.log("otp", otp.rows[0]);
-                console.log("date", new Date());
-                
-                const isOtpExpired = otp.rows[0].expire_in < new Date();
-                if(isOtpExpired) next(new createHttpError.BadRequest('otp is expired'));
-
-            }
+        
+            const isOtpNotExpired = otp.rows?.[0]?.expire_in > new Date();
             
+            if(isOtpNotExpired) res.status(400).json({
+                message: 'OTP is already sent to user',
+                success: true,
+            })
+
             // delete old otp if exist
             if(otp.rows.length > 0) await client.query("delete from otp where user_id=$1",[user.rows[0].id]);
 
@@ -45,7 +42,7 @@ async function loginService(req, res, next) {
             
             // send otp to user
             await emailQueue.add('sendEmail',{
-                to: user.rows[0].email,
+                to: user.rows[0].email || 'mehrzad20061384@gmail.com',
                 subject: 'OTP',
                 text: `Your OTP is ${otpCode}`
             });
@@ -54,7 +51,8 @@ async function loginService(req, res, next) {
                 message: 'OTP sent to user',
                 data: {
                     otp: otpCode
-                }
+                },
+                success: true
             });
 
         } else {
@@ -132,7 +130,7 @@ async function verifyOtpService(req, res, next) {
             });
 
             // set http-only cookie for 1 day
-            setCookie(res, token, 1 * 24 * 60 * 60 * 1000);
+            setCookie({res, token,maxAge: 1 * 24 * 60 * 60 * 1000});
 
             res.status(200).json({
                 message: 'User logged in',
@@ -152,9 +150,66 @@ async function verifyOtpService(req, res, next) {
 
 }
 
+//! @post /auth/resend?email=$x
+async function resendService(req, res, next) {
+
+    const { email } = req.params;
+    const client = await postgresQlClient()
+
+    try { 
+
+        // check user
+        const user = await client.query("select id,email from users where email=$1",[email]);
+        if(!user || user.rows.length == 0) next(createHttpError.NotFound('user not found'));
+
+        // check otp
+        const otp = await client.query("select id,user_id,expire_in from otp where user_id=$1",[user.rows[0].id]);
+        if(otp && otp.rows[0].expire_in > new Date()) next(createHttpError.BadRequest('you have one unexpired otp'));
+
+        // delete old otp
+        await client.query('delete from otp where user_id=$1',[user.rows[0].id]);
+
+        // create otp
+        const {expire_in,otpCode} = createOtp();
+        await client.query('insert into otp (expire_in,user_id,code,type) values($1,$2,$3,$4)',[
+            expire_in,user.rows[0].id,otpCode,1
+        ])
+
+        res.status(200).json({
+            message: "otp has sent successfully",
+            success: true,
+        })
+
+    } catch(e){
+        next(e)
+    } finally {
+        client.release();
+    }
+    
+}
+
+//! @post /auth/logout
+function logoutService(req, res, next) {
+
+    try{
+        
+        setCookie({res, token: '', maxAge:0});
+        
+        res.status(200).json({
+            message: "user is logout",
+            success: true,
+        });
+
+    } catch(e){
+        next(e)
+    }
+
+}
 
 
-// helper functions
+
+//------------------------------------------- helper functions
+
 function checkInput(input) {
 
     if (typeof input !== 'string' || input.trim() === '') {
@@ -198,8 +253,10 @@ function makeToken(data){
 }
 
 
-function setCookie(res, token, maxAge){
+function setCookie(value){
 
+    const {res, token, maxAge} = value;
+    
     // set http-only cookie
     res.cookie('token', token, {
         httpOnly: true,
@@ -214,5 +271,7 @@ function setCookie(res, token, maxAge){
 export {
     loginService,
     verifyOtpService,
-    checkInput
+    checkInput,
+    resendService,
+    logoutService
 }
